@@ -1,0 +1,99 @@
+version: "3.8"
+
+services:
+  # MongoDB Service
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - microservices-network
+
+  # Restaurant Service
+  restaurant-service:
+    build:
+      context: ./backend/restaurant-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/restaurant_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+    networks:
+      - microservices-network
+
+  # Order Service
+  order-service:
+    build:
+      context: ./backend/order-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo:27017/order_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+    networks:
+      - microservices-network
+
+  # Delivery Service
+  delivery-service:
+    build:
+      context: ./backend/delivery-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - MONGO_URI=mongodb://mongo:27017/delivery_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+    networks:
+      - microservices-network
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./backend/payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - MONGO_URI=mongodb://mongo:27017/payment_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+    networks:
+      - microservices-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - JWT_SECRET=your_jwt_secret
+    depends_on:
+      - mongo
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
