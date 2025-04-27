@@ -1,0 +1,67 @@
+openapi: 3.0.0
+info:
+  title: Order Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+paths:
+  /api/orders:
+    post:
+      summary: Create a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '201':
+          description: Created
+  /api/orders/{id}:
+    get:
+      summary: Get order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/orders/user/{userId}:
+    get:
+      summary: Get orders by user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Order:
+      type: object
+      required: [userId, restaurantId, items, totalAmount]
+      properties:
+        userId:
+          type: string
+        restaurantId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalAmount:
+          type: number
+    OrderItem:
+      type: object
+      required: [itemId, quantity]
+      properties:
+        itemId:
+          type: string
+        quantity:
+          type: integer
