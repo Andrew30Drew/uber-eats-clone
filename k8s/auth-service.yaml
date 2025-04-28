@@ -53,16 +53,17 @@ metadata:
   name: auth-config
 data:
   PORT: "3004"
-  MONGO_URI: "mongodb://mongo:27017/auth_db"
+  MONGODB_URI: "mongodb://mongo:27017/auth_db"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: auth-service
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 3004
       targetPort: 3004
+      nodePort: 30004
   selector:
     app: auth-service

@@ -27,16 +27,19 @@ spec:
               cpu: "0.25"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /restaurants
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
+              path: /restaurants
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
+          volumeMounts:
+            - name: uploads-volume
+              mountPath: /app/uploads
           envFrom:
             - configMapRef:
                 name: restaurant-config
@@ -46,6 +49,22 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: secret
+      volumes:
+        - name: uploads-volume
+          persistentVolumeClaim:
+            claimName: restaurant-uploads-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restaurant-uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: hostpath
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -53,16 +72,17 @@ metadata:
   name: restaurant-config
 data:
   PORT: "3000"
-  MONGO_URI: "mongodb://mongo:27017/restaurant_db"
+  MONGODB_URI: "mongodb://mongo:27017/restaurant_db"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: restaurant-service
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 3000
       targetPort: 3000
+      nodePort: 30006
   selector:
     app: restaurant-service

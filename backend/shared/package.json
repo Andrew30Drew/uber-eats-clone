@@ -1,0 +1,9 @@
+{
+  "name": "shared-middleware",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "middleware/auth.js",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  }
+}

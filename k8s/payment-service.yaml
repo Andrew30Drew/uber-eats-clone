@@ -60,9 +60,10 @@ kind: Service
 metadata:
   name: payment-service
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
-    - port: 3003
-      targetPort: 3003
+    - port: 3002
+      targetPort: 3002
+      nodePort: 30002
   selector:
     app: payment-service
