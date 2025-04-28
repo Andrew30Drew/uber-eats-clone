@@ -1,0 +1,10 @@
+{
+  "name": "delivery-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.9.0",
+    "bootstrap": "^5.3.5",
+    "react-router-dom": "^7.5.2"
+  }
+}
