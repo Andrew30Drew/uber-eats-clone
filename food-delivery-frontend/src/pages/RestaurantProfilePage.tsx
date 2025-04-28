@@ -1,16 +1,25 @@
 // src/pages/RestaurantProfilePage.tsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext.tsx";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardSidebar from "../components/DashboardSidebar.tsx";
+import RestaurantSelector from "../components/RestaurantSelector.tsx";
 import {
   getAllRestaurants,
   getRestaurantById,
   updateRestaurant,
 } from "../services/restaurantService.ts";
 import { uploadImage } from "../services/imageService.ts";
+import {
+  Save,
+  ImagePlus,
+  Loader,
+  FileEdit,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 
-const API_URL = "http://localhost:3006"; // Restaurant service URL
+const API_URL = "http://localhost:30006"; // Restaurant service URL
 
 interface Restaurant {
   _id: string;
@@ -62,11 +71,13 @@ interface FormData {
 
 const RestaurantProfilePage: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const restaurantId = searchParams.get("restaurantId");
+  const navigate = useNavigate();
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -93,92 +104,70 @@ const RestaurantProfilePage: React.FC = () => {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRestaurant = async () => {
-      try {
-        setLoading(true);
+  const fetchRestaurant = async (id: string) => {
+    try {
+      setLoading(true);
+      const restaurantData = await getRestaurantById(id);
+      setRestaurant(restaurantData);
+      setFormData({
+        name: restaurantData.name,
+        description: restaurantData.description,
+        cuisine: restaurantData.cuisine,
+        priceRange: restaurantData.priceRange,
+        isAvailable: restaurantData.isAvailable,
+        image: restaurantData.image || null,
+        imageFile: null,
+        address: {
+          street: restaurantData.address?.street || "",
+          city: restaurantData.address?.city || "",
+          state: restaurantData.address?.state || "",
+          zipCode: restaurantData.address?.zipCode || "",
+          country: restaurantData.address?.country || "",
+        },
+        deliveryTimeMin: restaurantData.deliveryTimeMin,
+        deliveryTimeMax: restaurantData.deliveryTimeMax,
+        hasFreeDelivery: restaurantData.hasFreeDelivery,
+        discountPercent: restaurantData.discountPercent,
+      });
 
-        // If restaurantId is provided in URL, use it directly
-        if (restaurantId) {
-          const restaurantData = await getRestaurantById(restaurantId);
-          setRestaurant(restaurantData);
-          setFormData({
-            name: restaurantData.name,
-            description: restaurantData.description,
-            cuisine: restaurantData.cuisine,
-            priceRange: restaurantData.priceRange,
-            isAvailable: restaurantData.isAvailable,
-            image: restaurantData.image || null,
-            imageFile: null,
-            address: {
-              street: restaurantData.address?.street || "",
-              city: restaurantData.address?.city || "",
-              state: restaurantData.address?.state || "",
-              zipCode: restaurantData.address?.zipCode || "",
-              country: restaurantData.address?.country || "",
-            },
-            deliveryTimeMin: restaurantData.deliveryTimeMin,
-            deliveryTimeMax: restaurantData.deliveryTimeMax,
-            hasFreeDelivery: restaurantData.hasFreeDelivery,
-            discountPercent: restaurantData.discountPercent,
-          });
-
-          if (restaurantData.image) {
-            setImagePreview(
-              restaurantData.image.startsWith("http")
-                ? restaurantData.image
-                : `http://localhost:3006${restaurantData.image}`
-            );
-          }
+      if (restaurantData.image) {
+        if (restaurantData.image.startsWith("data:")) {
+          setImagePreview(restaurantData.image);
+        } else if (restaurantData.image.startsWith("http")) {
+          setImagePreview(restaurantData.image);
         } else {
-          // Fallback to finding restaurant owned by current user if no ID provided
-          const data = await getAllRestaurants();
-          const ownedRestaurant = data.find((r: any) => r.ownerId === user?.id);
-
-          if (ownedRestaurant) {
-            setRestaurant(ownedRestaurant);
-            setFormData({
-              name: ownedRestaurant.name,
-              description: ownedRestaurant.description,
-              cuisine: ownedRestaurant.cuisine,
-              priceRange: ownedRestaurant.priceRange,
-              isAvailable: ownedRestaurant.isAvailable,
-              image: ownedRestaurant.image || null,
-              imageFile: null,
-              address: {
-                street: ownedRestaurant.address?.street || "",
-                city: ownedRestaurant.address?.city || "",
-                state: ownedRestaurant.address?.state || "",
-                zipCode: ownedRestaurant.address?.zipCode || "",
-                country: ownedRestaurant.address?.country || "",
-              },
-              deliveryTimeMin: ownedRestaurant.deliveryTimeMin,
-              deliveryTimeMax: ownedRestaurant.deliveryTimeMax,
-              hasFreeDelivery: ownedRestaurant.hasFreeDelivery,
-              discountPercent: ownedRestaurant.discountPercent,
-            });
-
-            if (ownedRestaurant.image) {
-              setImagePreview(
-                ownedRestaurant.image.startsWith("http")
-                  ? ownedRestaurant.image
-                  : `http://localhost:3006${ownedRestaurant.image}`
-              );
-            }
-          }
+          setImagePreview(
+            `http://localhost:30006${
+              restaurantData.image.startsWith("/")
+                ? restaurantData.image
+                : `/${restaurantData.image}`
+            }`
+          );
         }
-
-        setError(null);
-      } catch (err) {
-        setError("Failed to fetch restaurant details. Please try again later.");
-        console.error("Error fetching restaurant:", err);
-      } finally {
-        setLoading(false);
+      } else {
+        setImagePreview(null);
       }
-    };
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch restaurant details. Please try again later.");
+      console.error("Error fetching restaurant:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchRestaurant();
-  }, [user?.id, restaurantId]);
+  useEffect(() => {
+    if (restaurantId) {
+      fetchRestaurant(restaurantId);
+    } else {
+      // If no restaurantId is provided, the RestaurantSelector will handle selecting the first restaurant
+      setLoading(false);
+    }
+  }, [restaurantId]);
+
+  const handleRestaurantChange = (id: string) => {
+    setSearchParams({ restaurantId: id });
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -198,10 +187,10 @@ const RestaurantProfilePage: React.FC = () => {
         },
       }));
     } else if (type === "checkbox") {
-      const target = e.target as HTMLInputElement;
+      const { checked } = e.target as HTMLInputElement;
       setFormData((prev) => ({
         ...prev,
-        [name]: target.checked,
+        [name]: checked,
       }));
     } else {
       setFormData((prev) => ({
@@ -215,31 +204,18 @@ const RestaurantProfilePage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert(
-        `Image size (${(file.size / 1024 / 1024).toFixed(
-          2
-        )} MB) exceeds the 5MB limit.`
-      );
-      return;
-    }
+    // Preview the image
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
 
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      alert("Only image files are allowed.");
-      return;
-    }
-
-    // Create preview
-    const objectUrl = URL.createObjectURL(file);
-    setImagePreview(objectUrl);
-
-    // Store the file object (not base64)
+    // Set the file for upload
     setFormData((prev) => ({
       ...prev,
       imageFile: file,
-      image: null, // Clear any existing image path
+      image: null, // Clear the previous image path
     }));
   };
 
@@ -248,463 +224,408 @@ const RestaurantProfilePage: React.FC = () => {
     if (!restaurant) return;
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
       setSuccess(null);
 
-      if (!restaurant.deliveryZone) {
-        throw new Error("Restaurant missing deliveryZone field.");
+      let imageUrl = formData.image;
+
+      // If a new image file was selected, upload it first
+      if (formData.imageFile) {
+        imageUrl = await uploadImage(formData.imageFile);
       }
 
-      if (!restaurant.openingHours || restaurant.openingHours.length !== 7) {
-        throw new Error("Restaurant missing complete opening hours.");
-      }
-
-      // Create a copy of formData to work with
+      // Update restaurant with image URL
       const updateData = {
         ...formData,
-        deliveryZone: restaurant.deliveryZone,
-        openingHours: restaurant.openingHours,
-        address: {
-          ...formData.address,
-          location: restaurant.address?.location || {
-            type: "Point",
-            coordinates: [-73.9857, 40.7484], // Default to NYC
-          },
-        },
+        image: imageUrl,
       };
 
-      // Remove the imageFile property as it can't be serialized
-      const { imageFile, ...dataToSubmit } = updateData;
+      delete updateData.imageFile;
 
-      // If we have a new image file, upload it first
-      if (formData.imageFile) {
-        try {
-          console.log("Uploading new image...");
-          const imagePath = await uploadImage(formData.imageFile);
-          console.log(`Image uploaded successfully, path: ${imagePath}`);
-
-          // Set the new image path in the update data
-          dataToSubmit.image = imagePath;
-        } catch (uploadError) {
-          console.error("Failed to upload image:", uploadError);
-          setError("Failed to upload image. Please try again.");
-          setLoading(false);
-          return;
-        }
-      }
-
-      console.log("Updating restaurant with data:", dataToSubmit);
       const updatedRestaurant = await updateRestaurant(
         restaurant._id,
-        dataToSubmit
+        updateData
       );
+      setRestaurant(updatedRestaurant);
       setSuccess("Restaurant profile updated successfully!");
 
-      // Update the restaurant state with the updated data
-      setRestaurant(updatedRestaurant);
-
-      // Update the image preview if a new image was set
-      if (updatedRestaurant.image) {
-        const imagePath = updatedRestaurant.image.startsWith("http")
-          ? updatedRestaurant.image
-          : `${API_URL}${updatedRestaurant.image}`;
-        setImagePreview(imagePath);
-        setFormData((prev) => ({
-          ...prev,
-          image: updatedRestaurant.image,
-          imageFile: null,
-        }));
-      }
-
-      // Clear the imageFile property after successful update
-      setFormData((prev) => ({ ...prev, imageFile: null }));
+      // Reset image file after successful upload
+      setFormData((prev) => ({
+        ...prev,
+        imageFile: null,
+        image: imageUrl,
+      }));
     } catch (err: any) {
+      setError(err.message || "Failed to update restaurant profile.");
       console.error("Error updating restaurant:", err);
-      setError(
-        err.response?.data?.error || "Failed to update restaurant profile."
-      );
     } finally {
-      setLoading(false);
+      setSaving(false);
+
+      // Auto-dismiss success message after 3 seconds
+      if (success) {
+        setTimeout(() => {
+          setSuccess(null);
+        }, 3000);
+      }
     }
   };
 
-  if (loading && !restaurant) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!restaurant) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">No Restaurant Found</h2>
-          <p className="text-gray-600 mb-6">
-            You need to create a restaurant first.
-          </p>
-          <a
-            href="/dashboard"
-            className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary-hover transition-colors"
-          >
-            Go to Dashboard
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        <DashboardSidebar restaurantId={restaurant._id} />
+    <div className="flex flex-col md:flex-row bg-gray-50 min-h-screen">
+      <div className="w-full md:w-64 mb-4 md:mb-0">
+        <DashboardSidebar restaurantId={restaurantId || restaurant?._id} />
+      </div>
 
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold mb-8">Restaurant Profile</h1>
+      <div className="flex-1 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Restaurant Profile</h1>
 
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+          <RestaurantSelector
+            currentRestaurantId={restaurantId || undefined}
+            onRestaurantChange={handleRestaurantChange}
+            showCreateOption={true}
+          />
+
+          {loading ? (
+            <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center items-center min-h-[400px]">
+              <div className="flex flex-col items-center">
+                <Loader className="h-12 w-12 text-primary animate-spin mb-4" />
+                <p className="text-gray-500">Loading restaurant details...</p>
+              </div>
+            </div>
+          ) : restaurant ? (
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mr-3 mt-0.5" />
+                  <div>
+                    <h3 className="text-red-800 font-medium">Error</h3>
+                    <p className="text-red-700">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {success && (
+                <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-md flex items-start">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mr-3 mt-0.5" />
+                  <div>
+                    <h3 className="text-green-800 font-medium">Success</h3>
+                    <p className="text-green-700">{success}</p>
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="flex flex-col md:flex-row gap-8">
+                  {/* Left column */}
+                  <div className="md:w-1/3">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-medium mb-4">
+                        Restaurant Image
+                      </h3>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                        <div className="mb-4">
+                          {imagePreview ? (
+                            <img
+                              src={imagePreview}
+                              alt={formData.name}
+                              className="w-full h-48 object-cover rounded-lg mx-auto"
+                              onError={(e) => {
+                                console.error(
+                                  "Error loading image:",
+                                  imagePreview
+                                );
+                                (e.target as HTMLImageElement).src =
+                                  "https://via.placeholder.com/200?text=No+Image";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 flex items-center justify-center rounded-lg">
+                              <ImagePlus className="h-12 w-12 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <label className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 rounded-md py-2 px-4 text-sm font-medium text-gray-700 inline-flex items-center transition-colors">
+                          <FileEdit className="h-4 w-4 mr-2" />
+                          Change Image
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                          />
+                        </label>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Upload a square image for best results. Max size: 1MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Status
+                        </label>
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="isAvailable"
+                            checked={formData.isAvailable}
+                            onChange={handleInputChange}
+                            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-gray-700">
+                            Restaurant is active and available for orders
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right column */}
+                  <div className="md:w-2/3">
+                    <h3 className="text-lg font-medium mb-4">
+                      Basic Information
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Restaurant Name
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Cuisine Type
+                        </label>
+                        <input
+                          type="text"
+                          name="cuisine"
+                          value={formData.cuisine}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                        required
+                      ></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Price Range
+                        </label>
+                        <select
+                          name="priceRange"
+                          value={formData.priceRange}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        >
+                          <option value="">Select price range</option>
+                          <option value="$">$ (Inexpensive)</option>
+                          <option value="$$">$$ (Moderate)</option>
+                          <option value="$$$">$$$ (Expensive)</option>
+                          <option value="$$$$">$$$$ (Very Expensive)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Delivery Time Min (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          name="deliveryTimeMin"
+                          value={formData.deliveryTimeMin || ""}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Delivery Time Max (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          name="deliveryTimeMax"
+                          value={formData.deliveryTimeMax || ""}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount Percentage
+                        </label>
+                        <input
+                          type="number"
+                          name="discountPercent"
+                          value={formData.discountPercent || ""}
+                          onChange={handleInputChange}
+                          min="0"
+                          max="100"
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                        />
+                      </div>
+
+                      <div className="flex items-center h-full pt-6">
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="hasFreeDelivery"
+                            checked={formData.hasFreeDelivery || false}
+                            onChange={handleInputChange}
+                            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-gray-700">
+                            Offers Free Delivery
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-medium mb-4 mt-8">Address</h3>
+                    <div className="grid grid-cols-1 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Street
+                        </label>
+                        <input
+                          type="text"
+                          name="address.street"
+                          value={formData.address.street}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          City
+                        </label>
+                        <input
+                          type="text"
+                          name="address.city"
+                          value={formData.address.city}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          State
+                        </label>
+                        <input
+                          type="text"
+                          name="address.state"
+                          value={formData.address.state}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Zip Code
+                        </label>
+                        <input
+                          type="text"
+                          name="address.zipCode"
+                          value={formData.address.zipCode}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Country
+                        </label>
+                        <input
+                          type="text"
+                          name="address.country"
+                          value={formData.address.country}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6 flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-primary to-pink-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center"
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader className="animate-spin h-5 w-5 mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-5 w-5 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <h2 className="text-xl font-medium mb-4 text-gray-800">
+                No Restaurant Selected
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Please select a restaurant from above or create a new one.
+              </p>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="px-6 py-3 bg-primary text-white font-medium rounded-lg shadow-md hover:shadow-lg focus:outline-none transition-shadow"
+              >
+                Create Restaurant
+              </button>
             </div>
           )}
-
-          {success && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              {success}
-            </div>
-          )}
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Restaurant Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Restaurant Image
-                </label>
-                <div className="mt-1 flex items-center">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <img
-                        src={imagePreview}
-                        alt="Restaurant Preview"
-                        className="h-32 w-32 object-cover rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setFormData((prev) => ({
-                            ...prev,
-                            image: null,
-                            imageFile: null,
-                          }));
-                        }}
-                        className="absolute top-0 right-0 -mr-2 -mt-2 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : restaurant?.image ? (
-                    <div className="relative">
-                      <img
-                        src={
-                          restaurant.image.startsWith("http") ||
-                          restaurant.image.startsWith("/uploads/")
-                            ? `http://localhost:30006${
-                                restaurant.image.startsWith("/")
-                                  ? restaurant.image
-                                  : `/${restaurant.image}`
-                              }`
-                            : `data:image/jpeg;base64,${restaurant.image}`
-                        }
-                        alt="Restaurant Preview"
-                        className="h-32 w-32 object-cover rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            image: null,
-                            imageFile: null,
-                          }));
-                          setImagePreview(null);
-                        }}
-                        className="absolute top-0 right-0 -mr-2 -mt-2 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="cursor-pointer bg-gray-100 border border-gray-300 rounded-md p-2 hover:bg-gray-200 transition-colors">
-                      <span className="text-sm text-gray-600">
-                        Upload image
-                      </span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Recommended: Square image, max 5MB
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cuisine
-                  </label>
-                  <input
-                    type="text"
-                    name="cuisine"
-                    value={formData.cuisine}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price Range
-                  </label>
-                  <select
-                    name="priceRange"
-                    value={formData.priceRange}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Select price range</option>
-                    <option value="$">$ (Inexpensive)</option>
-                    <option value="$$">$$ (Moderate)</option>
-                    <option value="$$$">$$$ (Expensive)</option>
-                    <option value="$$$$">$$$$ (Very Expensive)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="isAvailable"
-                    checked={formData.isAvailable}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">
-                    Restaurant is currently available for orders
-                  </span>
-                </label>
-              </div>
-
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h3 className="text-lg font-medium mb-3">Address</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Street
-                    </label>
-                    <input
-                      type="text"
-                      name="address.street"
-                      value={formData.address.street}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      name="address.city"
-                      value={formData.address.city}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      State/Province
-                    </label>
-                    <input
-                      type="text"
-                      name="address.state"
-                      value={formData.address.state}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ZIP/Postal Code
-                    </label>
-                    <input
-                      type="text"
-                      name="address.zipCode"
-                      value={formData.address.zipCode}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      name="address.country"
-                      value={formData.address.country}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Delivery Time (Min)
-                  </label>
-                  <input
-                    type="number"
-                    name="deliveryTimeMin"
-                    value={formData.deliveryTimeMin ?? 15}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    min={5}
-                    max={120}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Delivery Time (Max)
-                  </label>
-                  <input
-                    type="number"
-                    name="deliveryTimeMax"
-                    value={formData.deliveryTimeMax ?? 30}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    min={5}
-                    max={120}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Free Delivery
-                  </label>
-                  <input
-                    type="checkbox"
-                    name="hasFreeDelivery"
-                    checked={!!formData.hasFreeDelivery}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        hasFreeDelivery: e.target.checked,
-                      }))
-                    }
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Discount (%)
-                  </label>
-                  <select
-                    name="discountPercent"
-                    value={formData.discountPercent ?? 0}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {[...Array(13)].map((_, i) => (
-                      <option key={i * 5} value={i * 5}>
-                        {i * 5}%
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary-hover transition-colors"
-                  disabled={loading}
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
     </div>

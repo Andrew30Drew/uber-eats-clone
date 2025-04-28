@@ -58,7 +58,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-background pt-6">
+      <div className="w-full">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginForm />} />
@@ -78,6 +78,28 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <RestaurantDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold mb-4">My Orders</h1>
+                  <p>Your order history will appear here.</p>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold mb-4">My Profile</h1>
+                  <p>Your profile information will appear here.</p>
+                </div>
               </ProtectedRoute>
             }
           />
@@ -104,6 +126,21 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute requiredRole="restaurant_owner">
                 <RestaurantMenuPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Delivery person routes */}
+          <Route
+            path="/delivery-dashboard"
+            element={
+              <ProtectedRoute requiredRole="delivery_person">
+                <div className="container mx-auto p-6">
+                  <h1 className="text-2xl font-bold mb-4">
+                    Delivery Dashboard
+                  </h1>
+                  <p>Delivery assignments and tracking will appear here.</p>
+                </div>
               </ProtectedRoute>
             }
           />
