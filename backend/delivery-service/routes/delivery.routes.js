@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const deliveryController = require('../controllers/delivery.controller');
+const authMiddleware = require('../middleware/auth.middleware');
+const validateDelivery = require('../middleware/validateDelivery.middleware');
 
-// Route to create a new delivery
-router.post('/', deliveryController.createDelivery);
+// Create a new delivery
+router.post('/', authMiddleware, validateDelivery, deliveryController.createDelivery);
 
-// Route to update delivery status
-router.patch('/:id/status', deliveryController.updateDeliveryStatus);
+// Update delivery status
+router.patch('/:id/status', authMiddleware, deliveryController.updateDeliveryStatus);
 
-// Route to get delivery info by orderId
-router.get('/:orderId', deliveryController.getDeliveryByOrderId);
+// Get delivery by orderId
+router.get('/:orderId', authMiddleware, deliveryController.getDeliveryByOrderId);
 
 module.exports = router;

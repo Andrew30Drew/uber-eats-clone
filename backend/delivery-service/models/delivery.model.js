@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
 
 const deliverySchema = new mongoose.Schema({
-    orderId: { type: String, required: true },
-    driverId: { type: String, required: true },
-    status: { type: String, default: 'Assigned' }
-}, { timestamps: true }); // Enable automatic createdAt and updatedAt fields
+  orderId: { type: String, required: true, unique: true },
+  status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' },
+  deliveryAddress: { type: String, required: true },
+  deliveryDate: { type: Date, default: Date.now },
+});
 
-module.exports = mongoose.model('Delivery', deliverySchema);
+const Delivery = mongoose.model('Delivery', deliverySchema);
+
+module.exports = Delivery;
