@@ -1,5 +1,8 @@
-exports.sendNotification = (userId, message) => {
-    console.log(`Sending notification to user ${userId}: ${message}`);
-    // Future: integrate Twilio, Mailgun, etc.
+// stub – replace with real SMS/email integrations
+exports.notifyUser = (userId, message) => {
+    console.log(`Notify USER[${userId}]:`, message);
+  };
+  exports.notifyRestaurant = (restaurantId, message) => {
+    console.log(`Notify RESTAURANT[${restaurantId}]:`, message);
   };
   

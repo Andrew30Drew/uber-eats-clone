@@ -1,43 +1,38 @@
-const express = require('express');
-const cors    = require('cors');
+// backend/order-service/app.js
+const path          = require('path');
+const express       = require('express');
+const cors          = require('cors');
 require('dotenv').config();
-const connectDB    = require('./config/db');
-const orderRoutes  = require('./routes/orderRoutes');
-const swaggerUi    = require('swagger-ui-express');
-const YAML         = require('yamljs');
-const cartRoutes  = require('./routes/cartRoutes');
+
+const connectDB     = require('./config/db');
+const routes        = require('./routes');                   // ← index.js in /routes
+const swaggerUi     = require('swagger-ui-express');
+const YAML          = require('yamljs');
+const swaggerDoc    = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
 const app = express();
+
+// 1) connect to Mongo
 connectDB();
 
-// Centralized error handler (must be before routes that throw)
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
+// 2) parse & CORS
 app.use(cors());
 app.use(express.json());
 
-// Swagger docs
-const swaggerDocument = YAML.load('./swagger.yaml');
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// 3) Swagger UI (must come *before* your API mounts)
+app.use(
+  '/api/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDoc, { explorer: true })
+);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
-});
+// 4) your API routes all live under /api
+app.use('/api', routes);
 
-// Mount order routes
-app.use('/api/orders', orderRoutes);
-app.use('/api/cart',   cartRoutes);
+// 5) healthchecks
+app.get('/health', (_req, res) => res.json({ status: 'healthy' }));
+app.get('/',      (_req, res) => res.send('Order Service Running'));
 
-// Root
-app.get('/', (req, res) => {
-  res.send('Order Service Running');
-});
-
+// 6) start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Order Service listening on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Listening on port ${PORT}`));

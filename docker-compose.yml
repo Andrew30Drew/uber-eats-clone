@@ -33,7 +33,7 @@ services:
       context: ./backend/order-service
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3006:3001"
     environment:
       - PORT=3001
       - MONGO_URI=mongodb://mongo:27017/order_db

@@ -2,10 +2,77 @@ openapi: 3.0.0
 info:
   title: Order Service API
   version: 1.0.0
+
 servers:
-  - url: http://localhost:3001
+  - url: http://localhost:3001/api
+
 paths:
-  /api/orders:
+  /cart/{userId}/items:
+    post:
+      summary: Add item to cart
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItem'
+      responses:
+        '201':
+          description: Item added to cart
+    get:
+      summary: Get user’s cart
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+  /cart/{userId}/items/{itemId}:
+    delete:
+      summary: Remove single item from cart
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: itemId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item removed
+
+  /cart/{userId}/clear:
+    delete:
+      summary: Clear entire cart
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart cleared
+
+  /orders:
     post:
       summary: Create a new order
       requestBody:
@@ -13,37 +80,97 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Order'
+              $ref: '#/components/schemas/NewOrder'
       responses:
         '201':
-          description: Created
-  /api/orders/{id}:
+          description: Order created
+    get:
+      summary: List all orders
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /orders/{id}:
     get:
       summary: Get order by ID
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: OK
-  /api/orders/user/{userId}:
-    get:
-      summary: Get orders by user
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    put:
+      summary: Update order
       parameters:
-        - name: userId
-          in: path
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrder'
+      responses:
+        '200':
+          description: Order updated
+    delete:
+      summary: Cancel order
+      parameters:
+        - in: path
+          name: id
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: OK
+          description: Order cancelled
+
 components:
   schemas:
-    Order:
+
+    CartItem:
+      type: object
+      required: [restaurantId, itemId, name, price, quantity]
+      properties:
+        restaurantId:
+          type: string
+        itemId:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+
+    Cart:
+      type: object
+      properties:
+        userId:
+          type: string
+        restaurantId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+
+    NewOrder:
       type: object
       required: [userId, restaurantId, items, totalAmount]
       properties:
@@ -54,14 +181,39 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrderItem'
+            $ref: '#/components/schemas/CartItem'
         totalAmount:
           type: number
-    OrderItem:
+
+    UpdateOrder:
       type: object
-      required: [itemId, quantity]
       properties:
-        itemId:
+        status:
           type: string
-        quantity:
-          type: integer
+          enum: [Pending, Preparing, Ready, 'Out for Delivery', Delivered, Cancelled]
+
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        restaurantId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totalAmount:
+          type: number
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

@@ -1,25 +1,17 @@
+// backend/order-service/models/cartModel.js
 const mongoose = require('mongoose');
 
 const cartSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  restaurantId: {
-    type: String,
-    required: true
-  },
+  userId:       { type: String, required: true, unique: true },
+  restaurantId: { type: String },
   items: [
     {
       itemId:   { type: String, required: true },
-      quantity: { type: Number, required: true, min: 1 }
+      name:     { type: String, required: true },
+      price:    { type: Number, required: true },
+      quantity: { type: Number, required: true },
     }
-  ],
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+  ]
+}, { timestamps: true });
 
 module.exports = mongoose.model('Cart', cartSchema);

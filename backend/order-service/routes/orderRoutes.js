@@ -1,28 +1,34 @@
-const express = require('express');
-const router  = express.Router();
-const { body } = require('express-validator');
-const orderController        = require('../controllers/orderController');
-const { handleValidationErrors } = require('../middlewares/validate');
+// backend/order-service/routes/orderRoutes.js
+const express         = require('express');
+const { body }        = require('express-validator');
+const validate        = require('../middlewares/validate');
+const orderController = require('../controllers/orderController');
 
-// Create Order (with validation)
+const router = express.Router();
+
+// Create new order
 router.post(
   '/',
   [
-    body('userId')       .notEmpty().withMessage('userId is required'),
-    body('restaurantId') .notEmpty().withMessage('restaurantId is required'),
-    body('items')        .isArray({ min: 1 }).withMessage('At least one item is required'),
-    body('totalAmount')  .isNumeric().withMessage('totalAmount must be a number'),
+    body('userId').notEmpty(),
+    body('restaurantId').notEmpty(),
+    body('items').isArray({ min: 1 }),
+    body('totalAmount').isNumeric()
   ],
-  handleValidationErrors,
+  validate,
   orderController.createOrder
 );
 
-// Specific routes first
-router.get('/user/:userId', orderController.getOrdersByUserId);
-router.get('/:id',           orderController.getOrderById);
+// List all orders
+router.get('/', orderController.listOrders);
 
-router.put('/:id',           orderController.updateOrder);
-router.delete('/:id',        orderController.cancelOrder);
-router.patch('/:id/status',  orderController.updateOrderStatus);
+// Get one by ID
+router.get('/:id', orderController.getOrderById);
+
+// Update
+router.put('/:id', orderController.updateOrder);
+
+// Cancel
+router.delete('/:id', orderController.cancelOrder);
 
 module.exports = router;
