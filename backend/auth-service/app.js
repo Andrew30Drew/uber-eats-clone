@@ -1,63 +1,66 @@
+import dotenv from 'dotenv';
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3004;
+const mongoURI = process.env.MONGO_URI; // This matches your `.env` file
 
-// Debug middleware
+// Debug: print env variables
+console.log("Environment variables:");
+console.log("PORT:", PORT);
+console.log("MONGO_URI:", mongoURI);
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+// Request logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-app.use(cors());
-app.use(express.json());
-
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGODB_URI)
+// Connect to MongoDB
+console.log("Attempting to connect to MongoDB at:", mongoURI);
+mongoose.connect(mongoURI)
   .then(() => {
-    console.log(
-      "Attempting to connect to MongoDB at:",
-      process.env.MONGODB_URI
-    );
-    console.log("Connected to MongoDB successfully");
+    console.log("MongoDB Connected Successfully");
     console.log("MongoDB connection state:", mongoose.connection.readyState);
   })
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+  });
 
-// Health check endpoint
+// Health check
 app.get("/health", (req, res) => {
-  console.log("Health check endpoint called");
   res.status(200).json({
     status: "healthy",
     mongodbStatus: mongoose.connection.readyState,
   });
 });
 
-// Mount auth routes
+// Auth routes
 console.log("Mounting auth routes at /auth");
 app.use("/auth", authRoutes);
 
+// Root
 app.get("/", (req, res) => {
-  console.log("Root endpoint called");
   res.send("Auth Service Running");
 });
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
   console.error("Error:", err);
   res.status(500).json({ error: err.message });
 });
 
-const PORT = process.env.PORT || 3004;
+// Start server
 app.listen(PORT, () => {
   console.log(`Auth Service listening on port ${PORT}`);
-  console.log("Environment variables:");
-  console.log("PORT:", process.env.PORT);
-  console.log("MONGODB_URI:", process.env.MONGODB_URI);
 });
