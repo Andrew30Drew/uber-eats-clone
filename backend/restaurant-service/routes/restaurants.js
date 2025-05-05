@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateJWT } from "../middleware/auth.js";
 import { upload, handleUploadError } from "../utils/fileUpload.js";
+import Restaurant from "../models/Restaurant.js";
 import {
   createRestaurant,
   updateRestaurant,
@@ -17,6 +18,23 @@ const router = express.Router();
 // Health check endpoint
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "healthy" });
+});
+
+// Internal service endpoints
+router.get("/internal/location/:restaurantId", async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: "Restaurant not found" });
+    }
+    res.json({
+      location: restaurant.address.location,
+      address: restaurant.address,
+    });
+  } catch (error) {
+    console.error("Error fetching restaurant location:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Public routes

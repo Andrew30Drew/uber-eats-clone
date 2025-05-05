@@ -1,14 +1,14 @@
 import express from "express";
 import cors from "cors";
-import morgan from "morgan";
 import dotenv from "dotenv";
-import deliveryRoutes from "./routes/delivery.js";
+import morgan from "morgan";
+import notifyRoutes from "./routes/notify.js";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3006;
+const PORT = process.env.PORT || 3005;
 
 // Middleware
 app.use(
@@ -20,7 +20,7 @@ app.use(
           "http://localhost:3001",
           "http://auth-service:3004",
           "http://restaurant-service:3000",
-          "http://notification-service:3005",
+          "http://delivery-service:3006",
         ],
     credentials: true,
   })
@@ -39,23 +39,23 @@ app.use((req, res, next) => {
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
-    service: "delivery-service",
+    service: "notification-service",
   });
 });
 
 // Mount routes
-app.use("/delivery", deliveryRoutes);
+app.use("/notify", notifyRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
   res.status(500).json({
     error: err.message,
-    service: "delivery-service",
+    service: "notification-service",
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Delivery Service listening on port ${PORT}`);
+  console.log(`Notification Service listening on port ${PORT}`);
 });

@@ -9,6 +9,34 @@ router.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+// Verify token endpoint (for internal service communication)
+router.post("/verify-token", async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(401).json({ error: "Token is required" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    res.json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Token verification error:", error);
+    res.status(401).json({ error: "Invalid token" });
+  }
+});
+
 // Register new user
 router.post("/register", async (req, res) => {
   try {
